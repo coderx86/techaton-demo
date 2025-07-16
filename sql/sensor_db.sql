@@ -1,4 +1,4 @@
-CREATE DATABASE sensor_db;
+CREATE DATABASE IF NOT EXISTS sensor_db;
 
 USE sensor_db;
 
