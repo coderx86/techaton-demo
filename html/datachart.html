@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sensor Viewer</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- jQuery + DataTables -->
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="p-6 font-sans bg-gray-50 text-gray-800">
+  <h1 class="text-2xl font-bold mb-6">🌡️ Sensor Data Viewer</h1>
+
+  <h2 class="text-xl font-semibold mb-2">📊 Sensor Table</h2>
+  <table id="sensorTable" class="display w-full mb-8"></table>
+
+  <h2 class="text-xl font-semibold mb-2">📈 Sensor Chart (Last 15 Readings)</h2>
+  <canvas id="sensorChart" class="w-full max-w-4xl"></canvas>
+
+  <script>
+    let chart, dataTable, lastDataJSON = "";
+
+    const loadData = () => {
+      fetch("http://127.0.0.1:8000/data")
+        .then(res => res.json())
+        .then(data => {
+          const newDataJSON = JSON.stringify(data);
+          if (newDataJSON === lastDataJSON) return; // 🔁 No update needed
+
+          lastDataJSON = newDataJSON; // ✅ Update cache
+
+          // Update DataTable (full data)
+          if (dataTable) {
+            dataTable.clear().rows.add(data).draw();
+          } else {
+            dataTable = $('#sensorTable').DataTable({
+              data,
+              columns: [
+                { title: 'ID', data: 'id' },
+                { title: 'Temp', data: 'temperature' },
+                { title: 'Humidity', data: 'humidity' },
+                { title: 'Time', data: 'timestamp' }
+              ]
+            });
+          }
+
+          // Get last 15 entries for the chart
+          const last15Data = data.slice(-15);
+          const labels = last15Data.map(d => d.timestamp);
+          const temp = last15Data.map(d => d.temperature);
+          const hum = last15Data.map(d => d.humidity);
+
+          if (chart) chart.destroy();
+          chart = new Chart(document.getElementById('sensorChart'), {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                { label: 'Temp (°C)', data: temp, borderColor: 'red', fill: false },
+                { label: 'Humidity (%)', data: hum, borderColor: 'blue', fill: false }
+              ]
+            },
+            options: {
+              scales: {
+                x: {
+                  title: {
+                    display: true,
+                    text: 'Last 15 Timestamps'
+                  }
+                }
+              }
+            }
+          });
+        })
+        .catch(err => console.error("❌ Error loading data:", err));
+    };
+
+    setInterval(loadData, 1000); // 🔁 Check every second, update only if changed
+  </script>
+</body>
+</html>
